@@ -1,8 +1,7 @@
-import math
-import random
+import numpy as np
 
 def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
+    return 1 / (1 + np.exp(-x))
 
 def sigmoid_derivative(x):
     s = sigmoid(x)
@@ -10,7 +9,7 @@ def sigmoid_derivative(x):
 
 def neuron(inputs, weights, bias):
     # weighted sum: w1*x1 + w2*x2 + ...
-    total = sum(i * w for i, w in zip(inputs, weights)) + bias
+    total = np.dot(inputs, weights) + bias
     return sigmoid(total)
 
 def mse_loss(y_true, y_pred):
@@ -25,14 +24,14 @@ class NeuralNetwork:
     """
     def __init__(self):
         # Weights and biases for hidden layer
-        self.w_h1 = [random.uniform(-1, 1) for _ in range(2)]  # weights for h1
-        self.w_h2 = [random.uniform(-1, 1) for _ in range(2)]  # weights for h2
-        self.b_h1 = random.uniform(-1, 1)        # bias for h1
-        self.b_h2 = random.uniform(-1, 1)        # bias for h2
+        self.w_h1 = np.random.normal(size=2)  # weights for h1
+        self.w_h2 = np.random.normal(size=2)  # weights for h2
+        self.b_h1 = np.random.normal()        # bias for h1
+        self.b_h2 = np.random.normal()        # bias for h2
 
         # Weights and biases for output layer
-        self.w_o1 = [random.uniform(-1, 1) for _ in range(2)]  # weights for o1
-        self.b_o1 = random.uniform(-1, 1)        # bias for o1
+        self.w_o1 = np.random.normal(size=2)  # weights for o1
+        self.b_o1 = np.random.normal()        # bias for o1
 
     def feedforward(self, x):
         # x is a list of 2 inputs
@@ -54,12 +53,12 @@ class NeuralNetwork:
         for epoch in range(epochs):
             for x, y_true in zip(data, all_y_trues):
                 # --- Feedforward ---
-                h1_input = sum(i * w for i, w in zip(x, self.w_h1)) + self.b_h1
+                h1_input = np.dot(x, self.w_h1) + self.b_h1
                 h1 = sigmoid(h1_input)
-                h2_input = sum(i * w for i, w in zip(x, self.w_h2)) + self.b_h2
+                h2_input = np.dot(x, self.w_h2) + self.b_h2
                 h2 = sigmoid(h2_input)
                 
-                o1_input = sum(i * w for i, w in zip([h1, h2], self.w_o1)) + self.b_o1
+                o1_input = np.dot([h1, h2], self.w_o1) + self.b_o1
                 o1 = sigmoid(o1_input)
                 y_pred = o1
 
@@ -111,25 +110,25 @@ if __name__ == "__main__":
     # ... (Keep previous tests if needed, or replace with training demo)
     
     # Define dataset
-    data = [
+    data = np.array([
         [-2, -1],  # Alice
         [25, 6],   # Bob
         [17, 4],   # Charlie
         [-15, -6], # Diana
-    ]
-    all_y_trues = [
+    ])
+    all_y_trues = np.array([
         1, # Alice
         0, # Bob
         0, # Charlie
         1, # Diana
-    ]
+    ])
     
     # Train network
     network = NeuralNetwork()
     network.train(data, all_y_trues)
 
     # Make predictions
-    emily = [-7, -3] # 128 pounds, 63 inches
-    frank = [20, 2]  # 155 pounds, 68 inches
+    emily = np.array([-7, -3]) # 128 pounds, 63 inches
+    frank = np.array([20, 2])  # 155 pounds, 68 inches
     print(f"Emily: {network.feedforward(emily):.6f}")
     print(f"Frank: {network.feedforward(frank):.6f}")
