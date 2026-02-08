@@ -23,98 +23,119 @@ def mse_loss(y_true, y_pred):
 
 class NeuralNetwork:
     """
-    A neural network with:
-    - 2 inputs
-    - a hidden layer with 2 neurons (h1, h2)
-    - an output layer with 1 neuron (o1)
+    A neural network that can be initialized with any number of layers.
+    layer_sizes: A list of integers representing the number of neurons in each layer.
+                 Example: [2, 3, 1] for 2 inputs, 3 hidden neurons, 1 output.
     """
-    def __init__(self):
-        # Weights and biases for hidden layer
-        self.w_h1 = np.random.normal(size=2)  # weights for h1
-        self.w_h2 = np.random.normal(size=2)  # weights for h2
-        self.b_h1 = np.random.normal()        # bias for h1
-        self.b_h2 = np.random.normal()        # bias for h2
+    def __init__(self, layer_sizes):
+        self.layer_sizes = layer_sizes
+        self.weights = []
+        self.biases = []
 
-        # Weights and biases for output layer
-        self.w_o1 = np.random.normal(size=2)  # weights for o1
-        self.b_o1 = np.random.normal()        # bias for o1
+        # Create weights and biases for each connection between layers
+        for i in range(len(layer_sizes) - 1):
+            input_dim = layer_sizes[i]
+            output_dim = layer_sizes[i+1]
+            
+            # He initialization (good for ReLU)
+            # Standard random normal scaled by sqrt(2/input_dim)
+            weight_matrix = np.random.randn(input_dim, output_dim) * np.sqrt(2.0/input_dim)
+            bias_vector = np.zeros((1, output_dim))
+            
+            self.weights.append(weight_matrix)
+            self.biases.append(bias_vector)
 
     def feedforward(self, x):
-        # x is a list of 2 inputs
-        # Use ReLU for hidden layer
-        h1_input = np.dot(x, self.w_h1) + self.b_h1
-        h1 = relu(h1_input)
-        h2_input = np.dot(x, self.w_h2) + self.b_h2
-        h2 = relu(h2_input)
+        """
+        Passes input x through the network.
+        x: Input vector (or batch of vectors)
+        Returns: The final output of the network.
+        """
+        # Ensure x is 2D (1, input_dim) for consistent dot product
+        current_activation = np.atleast_2d(x)
         
-        # Output from hidden layer becomes input to output layer
-        # Output layer still uses Sigmoid for 0-1 probability
-        o1 = neuron([h1, h2], self.w_o1, self.b_o1)
-        return o1
+        # Iterate through all layers except the last one (Hidden Layers)
+        for i in range(len(self.weights) - 1):
+            z = np.dot(current_activation, self.weights[i]) + self.biases[i]
+            current_activation = relu(z)
+            
+        # Output Layer (Sigmoid activation for binary classification)
+        final_z = np.dot(current_activation, self.weights[-1]) + self.biases[-1]
+        final_activation = sigmoid(final_z)
+        
+        return final_activation
 
     def train(self, data, all_y_trues):
         '''
-        - data is a (n x 2) numpy array, n = # of samples in the dataset.
-        - all_y_trues is a numpy array with n elements.
-        Elements in all_y_trues correspond to those in data.
+        data: (n x input_dim) numpy array
+        all_y_trues: (n,) numpy array of labels
         '''
         learn_rate = 0.1
-        epochs = 1000 # number of times to loop through the entire dataset
+        epochs = 1000 
 
         for epoch in range(epochs):
             for x, y_true in zip(data, all_y_trues):
-                # --- Feedforward ---
-                h1_input = np.dot(x, self.w_h1) + self.b_h1
-                h1 = relu(h1_input)
-                h2_input = np.dot(x, self.w_h2) + self.b_h2
-                h2 = relu(h2_input)
+                # Ensure input is shaped correctly (1, input_dim)
+                x = np.atleast_2d(x)
                 
-                o1_input = np.dot([h1, h2], self.w_o1) + self.b_o1
-                o1 = sigmoid(o1_input)
-                y_pred = o1
+                # --- 1. Forward Pass (Store everything for Backprop) ---
+                activations = [x] # List to store output of each layer. activations[0] is input.
+                zs = []           # List to store "z" (input to activation function) for each layer
+                
+                current_activation = x
+                
+                # Hidden Layers (ReLU)
+                for i in range(len(self.weights) - 1):
+                    z = np.dot(current_activation, self.weights[i]) + self.biases[i]
+                    zs.append(z)
+                    current_activation = relu(z)
+                    activations.append(current_activation)
+                
+                # Output Layer (Sigmoid)
+                final_z = np.dot(current_activation, self.weights[-1]) + self.biases[-1]
+                zs.append(final_z)
+                y_pred = sigmoid(final_z)
+                activations.append(y_pred)
+                
+                # --- 2. Backward Pass (Backpropagation) ---
+                
+                # Calculate error at output layer
+                # d_Loss/d_z = (y_pred - y_true) for MSE with Sigmoid output if simplified?
+                # Let's stick to the explicit chain rule you had:
+                # d_L_d_ypred = -2 * (y_true - y_pred)
+                # d_ypred_d_z = sigmoid_derivative(final_z)
+                # delta = d_L_d_ypred * d_ypred_d_z
+                
+                error = -2 * (y_true - y_pred)
+                delta = error * sigmoid_derivative(final_z) # Delta for the last layer
+                
+                # Store gradients to update after calculating all of them
+                # (Or update in place as we go backwards)
+                
+                # We iterate backwards. `layer_idx` goes from last layer index down to 0
+                for layer_idx in range(len(self.weights) - 1, -1, -1):
+                    input_to_layer = activations[layer_idx]
+                    
+                    # Gradient of weights: dot product of input.T and delta
+                    d_weights = np.dot(input_to_layer.T, delta)
+                    d_biases = delta # Since input to bias is always 1
+                    
+                    # Calculate delta for the PREVIOUS layer (if we actally have a previous layer)
+                    if layer_idx > 0:
+                        # Propagate error backwards: delta * weights.T
+                        # Then multiply by derivative of activation function of previous layer (ReLU)
+                        prev_z = zs[layer_idx - 1]
+                        delta = np.dot(delta, self.weights[layer_idx].T) * relu_derivative(prev_z)
 
-                # --- Calculate partial derivatives ---
-                # d_L_d_w_pred: partial L / partial y_pred
-                d_L_d_ypred = -2 * (y_true - y_pred)
-
-                # Neuron o1
-                d_ypred_d_w_o1_h1 = h1 * sigmoid_derivative(o1_input)
-                d_ypred_d_w_o1_h2 = h2 * sigmoid_derivative(o1_input)
-                d_ypred_d_b_o1 = sigmoid_derivative(o1_input)
-
-                d_ypred_d_h1 = self.w_o1[0] * sigmoid_derivative(o1_input)
-                d_ypred_d_h2 = self.w_o1[1] * sigmoid_derivative(o1_input)
-
-                # Neuron h1 (ReLU derivative)
-                d_h1_d_w_h1_x1 = x[0] * relu_derivative(h1_input)
-                d_h1_d_w_h1_x2 = x[1] * relu_derivative(h1_input)
-                d_h1_d_b_h1 = relu_derivative(h1_input)
-
-                # Neuron h2 (ReLU derivative)
-                d_h2_d_w_h2_x1 = x[0] * relu_derivative(h2_input)
-                d_h2_d_w_h2_x2 = x[1] * relu_derivative(h2_input)
-                d_h2_d_b_h2 = relu_derivative(h2_input)
-
-                # --- Update weights and biases ---
-                # Neuron o1
-                self.w_o1[0] -= learn_rate * d_L_d_ypred * d_ypred_d_w_o1_h1
-                self.w_o1[1] -= learn_rate * d_L_d_ypred * d_ypred_d_w_o1_h2
-                self.b_o1 -= learn_rate * d_L_d_ypred * d_ypred_d_b_o1
-
-                # Neuron h1
-                self.w_h1[0] -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_w_h1_x1
-                self.w_h1[1] -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_w_h1_x2
-                self.b_h1 -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_b_h1
-
-                # Neuron h2
-                self.w_h2[0] -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_w_h2_x1
-                self.w_h2[1] -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_w_h2_x2
-                self.b_h2 -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_b_h2
+                    # Update weights and biases for this layer
+                    self.weights[layer_idx] -= learn_rate * d_weights
+                    self.biases[layer_idx] -= learn_rate * d_biases
 
             if epoch % 100 == 0:
-                y_preds = [self.feedforward(x) for x in data]
-                # Correct MSE calculation for list
-                loss = sum((yt - yp) ** 2 for yt, yp in zip(all_y_trues, y_preds)) / len(all_y_trues)
+                # Calculate loss over entire dataset
+                final_preds = self.feedforward(data) # This now returns shape (n, 1)
+                # Flatten predictions for easy comparison with 1D y_trues
+                loss = np.mean((all_y_trues - final_preds.flatten()) ** 2)
                 print(f"Epoch {epoch} loss: {loss:.6f}")
 
 if __name__ == "__main__":
@@ -134,12 +155,13 @@ if __name__ == "__main__":
         1, # Diana
     ])
     
-    # Train network
-    network = NeuralNetwork()
+    # Train network with dynamic layers
+    # [2 inputs, 4 hidden neurons, 1 output]
+    network = NeuralNetwork([2, 4, 1])
     network.train(data, all_y_trues)
 
     # Make predictions
     emily = np.array([-7, -3]) # 128 pounds, 63 inches
     frank = np.array([20, 2])  # 155 pounds, 68 inches
-    print(f"Emily: {network.feedforward(emily):.6f}")
-    print(f"Frank: {network.feedforward(frank):.6f}")
+    print(f"Emily: {network.feedforward(emily).item():.6f}")
+    print(f"Frank: {network.feedforward(frank).item():.6f}")
