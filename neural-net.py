@@ -1,4 +1,5 @@
 import math
+import random
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
@@ -21,14 +22,14 @@ class NeuralNetwork:
     """
     def __init__(self):
         # Weights and biases for hidden layer
-        self.w_h1 = [0.5, -0.2]  # weights for h1
-        self.w_h2 = [0.3, 0.8]   # weights for h2
-        self.b_h1 = 0.1          # bias for h1
-        self.b_h2 = -0.1         # bias for h2
+        self.w_h1 = [random.uniform(-1, 1) for _ in range(2)]  # weights for h1
+        self.w_h2 = [random.uniform(-1, 1) for _ in range(2)]  # weights for h2
+        self.b_h1 = random.uniform(-1, 1)        # bias for h1
+        self.b_h2 = random.uniform(-1, 1)        # bias for h2
 
         # Weights and biases for output layer
-        self.w_o1 = [0.7, -0.6]  # weights for o1
-        self.b_o1 = 0.0          # bias for o1
+        self.w_o1 = [random.uniform(-1, 1) for _ in range(2)]  # weights for o1
+        self.b_o1 = random.uniform(-1, 1)        # bias for o1
 
     def feedforward(self, x):
         # x is a list of 2 inputs
