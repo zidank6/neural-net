@@ -7,6 +7,12 @@ def sigmoid_derivative(x):
     s = sigmoid(x)
     return s * (1 - s)
 
+def relu(x):
+    return np.maximum(0, x)
+
+def relu_derivative(x):
+    return np.where(x > 0, 1, 0)
+
 def neuron(inputs, weights, bias):
     # weighted sum: w1*x1 + w2*x2 + ...
     total = np.dot(inputs, weights) + bias
@@ -35,9 +41,14 @@ class NeuralNetwork:
 
     def feedforward(self, x):
         # x is a list of 2 inputs
-        h1 = neuron(x, self.w_h1, self.b_h1)
-        h2 = neuron(x, self.w_h2, self.b_h2)
+        # Use ReLU for hidden layer
+        h1_input = np.dot(x, self.w_h1) + self.b_h1
+        h1 = relu(h1_input)
+        h2_input = np.dot(x, self.w_h2) + self.b_h2
+        h2 = relu(h2_input)
+        
         # Output from hidden layer becomes input to output layer
+        # Output layer still uses Sigmoid for 0-1 probability
         o1 = neuron([h1, h2], self.w_o1, self.b_o1)
         return o1
 
@@ -54,9 +65,9 @@ class NeuralNetwork:
             for x, y_true in zip(data, all_y_trues):
                 # --- Feedforward ---
                 h1_input = np.dot(x, self.w_h1) + self.b_h1
-                h1 = sigmoid(h1_input)
+                h1 = relu(h1_input)
                 h2_input = np.dot(x, self.w_h2) + self.b_h2
-                h2 = sigmoid(h2_input)
+                h2 = relu(h2_input)
                 
                 o1_input = np.dot([h1, h2], self.w_o1) + self.b_o1
                 o1 = sigmoid(o1_input)
@@ -74,15 +85,15 @@ class NeuralNetwork:
                 d_ypred_d_h1 = self.w_o1[0] * sigmoid_derivative(o1_input)
                 d_ypred_d_h2 = self.w_o1[1] * sigmoid_derivative(o1_input)
 
-                # Neuron h1
-                d_h1_d_w_h1_x1 = x[0] * sigmoid_derivative(h1_input)
-                d_h1_d_w_h1_x2 = x[1] * sigmoid_derivative(h1_input)
-                d_h1_d_b_h1 = sigmoid_derivative(h1_input)
+                # Neuron h1 (ReLU derivative)
+                d_h1_d_w_h1_x1 = x[0] * relu_derivative(h1_input)
+                d_h1_d_w_h1_x2 = x[1] * relu_derivative(h1_input)
+                d_h1_d_b_h1 = relu_derivative(h1_input)
 
-                # Neuron h2
-                d_h2_d_w_h2_x1 = x[0] * sigmoid_derivative(h2_input)
-                d_h2_d_w_h2_x2 = x[1] * sigmoid_derivative(h2_input)
-                d_h2_d_b_h2 = sigmoid_derivative(h2_input)
+                # Neuron h2 (ReLU derivative)
+                d_h2_d_w_h2_x1 = x[0] * relu_derivative(h2_input)
+                d_h2_d_w_h2_x2 = x[1] * relu_derivative(h2_input)
+                d_h2_d_b_h2 = relu_derivative(h2_input)
 
                 # --- Update weights and biases ---
                 # Neuron o1
