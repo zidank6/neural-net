@@ -38,39 +38,98 @@ class NeuralNetwork:
         # x is a list of 2 inputs
         h1 = neuron(x, self.w_h1, self.b_h1)
         h2 = neuron(x, self.w_h2, self.b_h2)
-
         # Output from hidden layer becomes input to output layer
         o1 = neuron([h1, h2], self.w_o1, self.b_o1)
         return o1
 
+    def train(self, data, all_y_trues):
+        '''
+        - data is a (n x 2) numpy array, n = # of samples in the dataset.
+        - all_y_trues is a numpy array with n elements.
+        Elements in all_y_trues correspond to those in data.
+        '''
+        learn_rate = 0.1
+        epochs = 1000 # number of times to loop through the entire dataset
+
+        for epoch in range(epochs):
+            for x, y_true in zip(data, all_y_trues):
+                # --- Feedforward ---
+                h1_input = sum(i * w for i, w in zip(x, self.w_h1)) + self.b_h1
+                h1 = sigmoid(h1_input)
+                h2_input = sum(i * w for i, w in zip(x, self.w_h2)) + self.b_h2
+                h2 = sigmoid(h2_input)
+                
+                o1_input = sum(i * w for i, w in zip([h1, h2], self.w_o1)) + self.b_o1
+                o1 = sigmoid(o1_input)
+                y_pred = o1
+
+                # --- Calculate partial derivatives ---
+                # d_L_d_w_pred: partial L / partial y_pred
+                d_L_d_ypred = -2 * (y_true - y_pred)
+
+                # Neuron o1
+                d_ypred_d_w_o1_h1 = h1 * sigmoid_derivative(o1_input)
+                d_ypred_d_w_o1_h2 = h2 * sigmoid_derivative(o1_input)
+                d_ypred_d_b_o1 = sigmoid_derivative(o1_input)
+
+                d_ypred_d_h1 = self.w_o1[0] * sigmoid_derivative(o1_input)
+                d_ypred_d_h2 = self.w_o1[1] * sigmoid_derivative(o1_input)
+
+                # Neuron h1
+                d_h1_d_w_h1_x1 = x[0] * sigmoid_derivative(h1_input)
+                d_h1_d_w_h1_x2 = x[1] * sigmoid_derivative(h1_input)
+                d_h1_d_b_h1 = sigmoid_derivative(h1_input)
+
+                # Neuron h2
+                d_h2_d_w_h2_x1 = x[0] * sigmoid_derivative(h2_input)
+                d_h2_d_w_h2_x2 = x[1] * sigmoid_derivative(h2_input)
+                d_h2_d_b_h2 = sigmoid_derivative(h2_input)
+
+                # --- Update weights and biases ---
+                # Neuron o1
+                self.w_o1[0] -= learn_rate * d_L_d_ypred * d_ypred_d_w_o1_h1
+                self.w_o1[1] -= learn_rate * d_L_d_ypred * d_ypred_d_w_o1_h2
+                self.b_o1 -= learn_rate * d_L_d_ypred * d_ypred_d_b_o1
+
+                # Neuron h1
+                self.w_h1[0] -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_w_h1_x1
+                self.w_h1[1] -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_w_h1_x2
+                self.b_h1 -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_b_h1
+
+                # Neuron h2
+                self.w_h2[0] -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_w_h2_x1
+                self.w_h2[1] -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_w_h2_x2
+                self.b_h2 -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_b_h2
+
+            if epoch % 100 == 0:
+                y_preds = [self.feedforward(x) for x in data]
+                # Correct MSE calculation for list
+                loss = sum((yt - yp) ** 2 for yt, yp in zip(all_y_trues, y_preds)) / len(all_y_trues)
+                print(f"Epoch {epoch} loss: {loss:.6f}")
+
 if __name__ == "__main__":
-    test_values = [-10, -1, 0, 1, 10]
+    # ... (Keep previous tests if needed, or replace with training demo)
     
-    print(f"{'Input':>10} | {'Sigmoid':>20}")
-    print("-" * 35)
-    for x in test_values:
-        print(f"{x:>10} | {sigmoid(x):>20.10f}")
-
-    print("\nDerivative test:")
-    print(f"{'Input':>10} | {'Derivative':>20}")
-    print("-" * 35)
-    for x in test_values:
-        print(f"{x:>10} | {sigmoid_derivative(x):>20.10f}")
-
-    print("\nNeuron test:")
-    inputs = [1.0, 2.0]
-    weights = [0.5, -0.3]
-    bias = 0.1
-    output = neuron(inputs, weights, bias)
-    print(f"Inputs: {inputs}, Weights: {weights}, Bias: {bias} -> Output: {output:.6f}")
-
-    print("\nNeural Network (2 inputs, 2 hidden, 1 output) test:")
+    # Define dataset
+    data = [
+        [-2, -1],  # Alice
+        [25, 6],   # Bob
+        [17, 4],   # Charlie
+        [-15, -6], # Diana
+    ]
+    all_y_trues = [
+        1, # Alice
+        0, # Bob
+        0, # Charlie
+        1, # Diana
+    ]
+    
+    # Train network
     network = NeuralNetwork()
-    x = [2, 3]
-    y_true = 1  # Example target
-    y_pred = network.feedforward(x)
-    loss = mse_loss(y_true, y_pred)
-    print(f"Input: {x}")
-    print(f"Target: {y_true}")
-    print(f"Prediction: {y_pred:.6f}")
-    print(f"MSE Loss: {loss:.6f}")
+    network.train(data, all_y_trues)
+
+    # Make predictions
+    emily = [-7, -3] # 128 pounds, 63 inches
+    frank = [20, 2]  # 155 pounds, 68 inches
+    print(f"Emily: {network.feedforward(emily):.6f}")
+    print(f"Frank: {network.feedforward(frank):.6f}")
