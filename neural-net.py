@@ -13,6 +13,9 @@ def neuron(inputs, weights, bias):
     total = sum(i * w for i, w in zip(inputs, weights)) + bias
     return sigmoid(total)
 
+def mse_loss(y_true, y_pred):
+    return ((y_true - y_pred) ** 2).mean() if hasattr(y_true, 'mean') else ((y_true - y_pred) ** 2)
+
 class NeuralNetwork:
     """
     A neural network with:
@@ -64,4 +67,10 @@ if __name__ == "__main__":
     print("\nNeural Network (2 inputs, 2 hidden, 1 output) test:")
     network = NeuralNetwork()
     x = [2, 3]
-    print(f"Input: {x} -> Output: {network.feedforward(x):.6f}")
+    y_true = 1  # Example target
+    y_pred = network.feedforward(x)
+    loss = mse_loss(y_true, y_pred)
+    print(f"Input: {x}")
+    print(f"Target: {y_true}")
+    print(f"Prediction: {y_pred:.6f}")
+    print(f"MSE Loss: {loss:.6f}")
