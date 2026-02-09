@@ -121,21 +121,56 @@ function getPixelData() {
     const canvas = document.getElementById('draw-canvas');
     const ctx = canvas.getContext('2d');
 
-    // Create a temporary 28x28 canvas to downsample
+    // Step 1: Get the raw image data from the 280x280 canvas
+    const imgData = ctx.getImageData(0, 0, 280, 280);
+
+    // Step 2: Find the bounding box of the drawn content
+    let minX = 280, minY = 280, maxX = 0, maxY = 0;
+    for (let y = 0; y < 280; y++) {
+        for (let x = 0; x < 280; x++) {
+            const idx = (y * 280 + x) * 4;
+            if (imgData.data[idx] > 10) { // any non-black pixel
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            }
+        }
+    }
+
+    // If nothing drawn, return zeros
+    if (minX >= maxX || minY >= maxY) {
+        return new Array(784).fill(0);
+    }
+
+    // Step 3: Crop and center into a 28x28 image (MNIST-style)
+    // MNIST digits are scaled to fit in a 20x20 box, then centered in 28x28
+    const cropW = maxX - minX + 1;
+    const cropH = maxY - minY + 1;
+
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = 28;
     tmpCanvas.height = 28;
     const tmpCtx = tmpCanvas.getContext('2d');
 
-    // Draw the 280x280 canvas onto the 28x28 canvas (downsampling)
-    tmpCtx.drawImage(canvas, 0, 0, 28, 28);
+    // Black background
+    tmpCtx.fillStyle = '#000';
+    tmpCtx.fillRect(0, 0, 28, 28);
 
-    // Extract pixel data — grayscale values normalized to 0-1
-    const imageData = tmpCtx.getImageData(0, 0, 28, 28);
+    // Scale the cropped region to fit in 20x20, centered in 28x28
+    const scale = Math.min(20 / cropW, 20 / cropH);
+    const scaledW = cropW * scale;
+    const scaledH = cropH * scale;
+    const offsetX = (28 - scaledW) / 2;
+    const offsetY = (28 - scaledH) / 2;
+
+    tmpCtx.drawImage(canvas, minX, minY, cropW, cropH, offsetX, offsetY, scaledW, scaledH);
+
+    // Step 4: Extract grayscale pixel values normalized to 0-1
+    const finalData = tmpCtx.getImageData(0, 0, 28, 28);
     const pixels = new Array(784);
     for (let i = 0; i < 784; i++) {
-        // Use the red channel (since we drew white on black, R=G=B)
-        pixels[i] = imageData.data[i * 4] / 255.0;
+        pixels[i] = finalData.data[i * 4] / 255.0;
     }
     return pixels;
 }
