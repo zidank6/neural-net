@@ -13,6 +13,18 @@ def relu(x):
 def relu_derivative(x):
     return np.where(x > 0, 1, 0)
 
+def softmax(x):
+    # Subtract max for numerical stability (prevents e^big_number from exploding)
+    shifted = x - np.max(x, axis=-1, keepdims=True)
+    exps = np.exp(shifted)
+    return exps / np.sum(exps, axis=-1, keepdims=True)
+
+def cross_entropy_loss(y_true, y_pred):
+    # Clip predictions to avoid log(0) which would give -infinity
+    y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+    # Only sum over the "true" class (where y_true = 1)
+    return -np.sum(y_true * np.log(y_pred_clipped)) / len(y_true)
+
 def neuron(inputs, weights, bias):
     # weighted sum: w1*x1 + w2*x2 + ...
     total = np.dot(inputs, weights) + bias
