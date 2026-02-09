@@ -269,7 +269,7 @@ async function init() {
 
     // Initialize 3D visualization
     const container = document.getElementById('network-3d');
-    network3d = new Network3D(container, modelWeights.layer_sizes);
+    network3d = new Network3D(container, modelWeights.layer_sizes, modelWeights);
 }
 
 window.addEventListener('DOMContentLoaded', init);
